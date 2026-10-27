@@ -1,0 +1,150 @@
+{
+  "updated": "2026-10-27T09:31:51Z",
+  "timezone": "Asia/Karachi",
+  "blocks": [
+    {
+      "id": "ex-mon-study",
+      "day": "Mon",
+      "start": "16:00",
+      "end": "18:00",
+      "type": "study",
+      "title": "Calculus problem set",
+      "tag": "MATH 201",
+      "notes": "Sections 4.2-4.4",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-mon-stream",
+      "day": "Mon",
+      "start": "19:00",
+      "end": "22:00",
+      "type": "stream",
+      "title": "Valorant ranked grind",
+      "tag": "Twitch",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-tue-study",
+      "day": "Tue",
+      "start": "15:00",
+      "end": "17:30",
+      "type": "study",
+      "title": "Essay first draft",
+      "tag": "ENG 110",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-tue-break",
+      "day": "Tue",
+      "start": "18:00",
+      "end": "19:00",
+      "type": "break",
+      "title": "Gym",
+      "tag": "",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-wed-study",
+      "day": "Wed",
+      "start": "10:00",
+      "end": "12:00",
+      "type": "study",
+      "title": "Lecture review",
+      "tag": "CS 150",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-wed-stream",
+      "day": "Wed",
+      "start": "19:00",
+      "end": "23:00",
+      "type": "stream",
+      "title": "Community game night",
+      "tag": "Twitch",
+      "notes": "Viewer lobbies",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-thu-study",
+      "day": "Thu",
+      "start": "16:00",
+      "end": "18:30",
+      "type": "study",
+      "title": "Exam prep",
+      "tag": "MATH 201",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-thu-other",
+      "day": "Thu",
+      "start": "20:00",
+      "end": "21:30",
+      "type": "other",
+      "title": "Edit highlight clips",
+      "tag": "YouTube",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-fri-stream",
+      "day": "Fri",
+      "start": "20:00",
+      "end": "24:00",
+      "type": "stream",
+      "title": "Just chatting + Q&A",
+      "tag": "Twitch",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-sat-study",
+      "day": "Sat",
+      "start": "10:00",
+      "end": "12:00",
+      "type": "study",
+      "title": "Flashcards",
+      "tag": "BIO 101",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-sat-stream",
+      "day": "Sat",
+      "start": "14:00",
+      "end": "18:00",
+      "type": "stream",
+      "title": "Elden Ring blind run",
+      "tag": "Twitch",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    },
+    {
+      "id": "ex-sun-study",
+      "day": "Sun",
+      "start": "13:00",
+      "end": "16:00",
+      "type": "study",
+      "title": "Weekly reading + planning",
+      "tag": "",
+      "notes": "",
+      "doneWeek": "",
+      "example": true
+    }
+  ]
+}

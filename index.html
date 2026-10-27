@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F4F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111017" media="(prefers-color-scheme: dark)">
+<title>Stream &amp; Study Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a broadcast run-of-show. Live status strip up top (on air now, up next, week totals), weekly timetable below, agenda list as the phone view. */
+:root {
+  --bg: #F4F4F7;
+  --surface: #FFFFFF;
+  --sunken: #ECEBF1;
+  --ink: #17161E;
+  --muted: #676577;
+  --line: #DFDEE7;
+  --stream: #C92A62;
+  --stream-soft: #FBE4ED;
+  --study: #2563C9;
+  --study-soft: #E1EBFB;
+  --break: #9A6210;
+  --break-soft: #F7ECD8;
+  --other: #6A5BB8;
+  --other-soft: #ECE8F9;
+  --live: #E0262B;
+  --ok: #1E8A55;
+  --warn-soft: #FFF3D6;
+  --ok-soft: #DFF3E8;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --hour: 52px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111017; --surface: #1A1922; --sunken: #15141C; --ink: #EDECF3; --muted: #9C9AAD; --line: #2D2B38;
+    --stream: #F27099; --stream-soft: #3A1727; --study: #74A3F4; --study-soft: #172641;
+    --break: #E2A84E; --break-soft: #392A12; --other: #AB9EF2; --other-soft: #262041;
+    --live: #FF5154; --ok: #4CC487; --warn-soft: #3A3014; --ok-soft: #133324;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--study); outline-offset: 2px; }
+
+.wrap {
+  max-width: 1240px; margin: 0 auto;
+  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* Top bar */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); letter-spacing: -0.02em; line-height: 1.05; margin: 0; text-wrap: balance; }
+.brand h1 .amp { color: var(--muted); font-weight: 600; }
+.weekline { font-family: var(--f-mono); font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 13px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn.primary:hover { opacity: 0.9; }
+.btn.sm { padding: 5px 10px; font-size: 13px; }
+.btn.danger { color: var(--live); }
+.btn.danger.armed { background: var(--live); color: #fff; border-color: var(--live); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 2px; }
+.seg button { border: 0; background: none; padding: 6px 11px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--sunken); color: var(--ink); }
+
+/* Banners */
+#banners { display: flex; flex-direction: column; gap: 8px; }
+#banners:empty { display: none; }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 14px; border-radius: 10px; background: var(--warn-soft); font-size: 14px; }
+.banner.ok { background: var(--ok-soft); }
+.banner.quiet { background: var(--sunken); }
+.banner p { margin: 0; flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.banner code { font-family: var(--f-mono); font-size: 12.5px; }
+
+/* Status strip */
+.status { display: grid; grid-template-columns: 1.35fr 1fr 1.2fr; gap: 12px; }
+@media (max-width: 960px) { .status { grid-template-columns: 1fr 1fr; } .status .stats { grid-column: 1 / -1; } }
+@media (max-width: 620px) { .status { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.panel h2 { font-family: var(--f-display); font-weight: 700; font-size: 22px; line-height: 1.15; letter-spacing: -0.01em; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.panel .sub { margin: 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.now.is-live { border-color: color-mix(in srgb, var(--live) 45%, var(--line)); }
+.onair { display: inline-flex; align-items: center; gap: 6px; color: var(--live); font-weight: 500; }
+.onair i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.prog { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--c, var(--ink)); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mono { font-family: var(--f-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.countdown { font-family: var(--f-display); font-weight: 600; font-size: 30px; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.countdown small { font-family: var(--f-body); font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+
+.chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--soft); color: var(--c); white-space: nowrap; }
+[data-type="stream"] { --c: var(--stream); --soft: var(--stream-soft); }
+[data-type="study"] { --c: var(--study); --soft: var(--study-soft); }
+[data-type="break"] { --c: var(--break); --soft: var(--break-soft); }
+[data-type="other"] { --c: var(--other); --soft: var(--other-soft); }
+
+.figs { display: flex; gap: 22px; flex-wrap: wrap; }
+.fig { display: flex; flex-direction: column; gap: 2px; }
+.fig b { font-family: var(--f-display); font-weight: 700; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c); }
+.fig span { font-size: 13px; color: var(--muted); }
+.stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunken); gap: 2px; }
+.stack i { display: block; height: 100%; background: var(--c); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+
+/* Board */
+.board { position: relative; }
+.grid-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.grid { display: grid; grid-template-columns: 58px repeat(7, minmax(100px, 1fr)); min-width: 760px; }
+.ghead { background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 8px 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.ghead + .ghead { border-left: 1px solid var(--line); }
+.gday { font-family: var(--f-display); font-weight: 600; font-size: 15px; }
+.gsum { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.ghead.is-today .gday { color: var(--live); }
+.ghead.is-today .gday::after { content: " · today"; font-family: var(--f-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.04em; }
+.gutter { position: relative; }
+.gutter span { position: absolute; right: 8px; transform: translateY(-50%); font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.gutter span:first-child { transform: none; top: 2px !important; }
+.gcol {
+  position: relative; border-left: 1px solid var(--line); cursor: copy;
+  background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour));
+}
+.gcol.is-today { background-color: color-mix(in srgb, var(--live) 4%, transparent); }
+.gcol.ro { cursor: default; }
+.blk {
+  position: absolute; border-radius: 6px; padding: 4px 7px; overflow: hidden; cursor: pointer;
+  background: var(--soft); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+  display: flex; flex-direction: column; gap: 1px; text-align: left; min-width: 0;
+}
+.blk:hover { border-color: var(--c); z-index: 2; }
+.blk .bt { font-weight: 600; font-size: 13px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.blk .bm { font-family: var(--f-mono); font-size: 10.5px; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.blk .bg { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.blk.short { flex-direction: row; align-items: center; gap: 6px; padding-block: 1px; }
+.blk.short .bt { -webkit-line-clamp: 1; font-size: 12px; }
+.blk.done { opacity: 0.55; }
+.blk.done .bt::before { content: "✓ "; color: var(--ok); }
+.blk.example { border-style: dashed; }
+.blk.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
+.nowline { position: absolute; left: -1px; right: 0; height: 2px; background: var(--live); z-index: 4; pointer-events: none; }
+.nowline::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
+
+.overlay { position: absolute; inset: 52px 0 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 70px; pointer-events: none; z-index: 5; }
+.overlay .card { pointer-events: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; max-width: 360px; margin: 0 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.overlay h3 { margin: 0; font-family: var(--f-display); font-size: 18px; }
+.overlay p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* Agenda */
+.agenda { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.aday { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.aday.is-today { border-color: color-mix(in srgb, var(--live) 45%, var(--line)); }
+.aday header { display: flex; align-items: baseline; gap: 10px; }
+.aday h3 { margin: 0; font-family: var(--f-display); font-size: 17px; font-weight: 600; }
+.aday.is-today h3 { color: var(--live); }
+.aday header .mono { color: var(--muted); font-size: 12px; flex: 1; }
+.linkbtn { border: 0; background: none; color: var(--study); cursor: pointer; font-size: 13px; font-weight: 500; padding: 2px 4px; }
+.aday ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.arow { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--soft); cursor: pointer; border: 1px solid transparent; }
+.arow:hover { border-color: color-mix(in srgb, var(--c) 45%, transparent); }
+.arow.example { border: 1px dashed color-mix(in srgb, var(--c) 40%, transparent); }
+.arow.live { border-color: var(--live); }
+.arow .atime { font-family: var(--f-mono); font-size: 12px; color: var(--c); font-variant-numeric: tabular-nums; grid-column: 1 / 3; }
+.arow .atitle { font-weight: 600; font-size: 14px; min-width: 0; overflow-wrap: anywhere; grid-column: 1 / 3; }
+.arow .atitle small { font-weight: 400; color: var(--muted); font-size: 13px; }
+.arow.done .atitle { text-decoration: line-through; text-decoration-color: var(--muted); color: var(--muted); }
+.adone { grid-column: 3; grid-row: 1 / 3; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.adone input { width: 17px; height: 17px; accent-color: var(--ok); cursor: pointer; }
+.aempty { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* Dialog */
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgba(10, 9, 16, 0.45); }
+dialog form { display: flex; flex-direction: column; }
+.dhead { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 6px; }
+.dhead h2 { margin: 0; font-family: var(--f-display); font-size: 21px; }
+.iconbtn { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; padding: 10px 18px 6px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.field > span, .field legend { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; padding: 0; margin-bottom: 5px; }
+.field > span { margin-bottom: 0; }
+.full { grid-column: 1 / -1; }
+.field input, .field select, .field textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.field textarea { resize: vertical; min-height: 64px; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; }
+.picks label { position: relative; }
+.picks input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.picks span { display: inline-block; padding: 6px 11px; border-radius: 7px; border: 1px solid var(--line); font-size: 13px; font-weight: 500; cursor: pointer; }
+.picks input:checked + span { background: var(--soft, var(--sunken)); border-color: var(--c, var(--ink)); color: var(--c, var(--ink)); }
+.picks input:focus-visible + span { outline: 2px solid var(--study); outline-offset: 2px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 17px; height: 17px; accent-color: var(--ok); }
+.warn { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--warn-soft); font-size: 13px; }
+.err { margin: 0; color: var(--live); font-size: 13px; }
+.notes-view { margin: 0; white-space: pre-wrap; font-size: 14px; }
+.dfoot { display: flex; gap: 8px; padding: 14px 18px 16px; align-items: center; flex-wrap: wrap; }
+.dfoot .spacer { flex: 1; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; max-width: calc(100vw - 32px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#copyText { width: 100%; min-height: 180px; font-family: var(--f-mono); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .onair i { animation: none; }
+  .toast { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Stream <span class="amp">&amp;</span> Study Planner</h1>
+      <div class="weekline" id="weekline">This week</div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="vWeek" data-view="week">Week</button>
+        <button type="button" id="vAgenda" data-view="agenda">Agenda</button>
+      </div>
+      <div class="seg" role="group" aria-label="Clock">
+        <button type="button" id="c12" data-clock="12">12h</button>
+        <button type="button" id="c24" data-clock="24">24h</button>
+      </div>
+      <button type="button" class="btn" id="copyBtn">Copy stream schedule</button>
+      <button type="button" class="btn primary" id="addBtn" hidden>+ Add block</button>
+    </div>
+  </header>
+
+  <div id="banners"></div>
+  <section class="status" id="status" aria-live="polite"></section>
+  <section class="board" id="board"></section>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form id="form" novalidate>
+    <div class="dhead">
+      <h2 id="dlgTitle">Add block</h2>
+      <button type="button" class="iconbtn" data-close aria-label="Close">×</button>
+    </div>
+    <div class="fgrid">
+      <label class="field full"><span>Title</span><input id="fTitle" maxlength="80" placeholder="e.g. Valorant ranked grind" autocomplete="off"></label>
+      <fieldset class="field full"><legend>Type</legend>
+        <div class="picks" id="fType">
+          <label data-type="stream"><input type="radio" name="fType" id="fTypeStream" value="stream"><span>Stream</span></label>
+          <label data-type="study"><input type="radio" name="fType" id="fTypeStudy" value="study"><span>Study</span></label>
+          <label data-type="break"><input type="radio" name="fType" id="fTypeBreak" value="break"><span>Break</span></label>
+          <label data-type="other"><input type="radio" name="fType" id="fTypeOther" value="other"><span>Other</span></label>
+        </div>
+      </fieldset>
+      <fieldset class="field full" id="fDaysWrap"><legend>Days (adds one block per day)</legend>
+        <div class="picks" id="fDays"></div>
+      </fieldset>
+      <label class="field" id="fDayWrap"><span>Day</span><select id="fDay"></select></label>
+      <label class="field"><span>Starts</span><input type="time" id="fStart" step="300"></label>
+      <label class="field"><span>Ends</span><input type="time" id="fEnd" step="300"></label>
+      <label class="field full"><span id="fTagLabel">Game or platform</span><input id="fTag" maxlength="60" autocomplete="off"></label>
+      <label class="field full"><span>Notes</span><textarea id="fNotes" rows="3" maxlength="500" placeholder="Goals, prep checklist, links"></textarea></label>
+      <label class="check full" id="fDoneWrap"><input type="checkbox" id="fDone"> Done this week</label>
+      <p class="warn full" id="fWarn" hidden></p>
+      <p class="err full" id="fErr" hidden></p>
+    </div>
+    <div class="dfoot">
+      <button type="button" class="btn danger" id="fDelete">Delete</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="fSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="viewDlg" aria-labelledby="viewTitle">
+  <div class="dhead"><h2 id="viewTitle">Block</h2><button type="button" class="iconbtn" data-close aria-label="Close">×</button></div>
+  <div class="fgrid" id="viewBody"></div>
+  <div class="dfoot"><span class="spacer"></span><button type="button" class="btn primary" data-close>Close</button></div>
+</dialog>
+
+<dialog id="copyDlg" aria-labelledby="copyTitle">
+  <div class="dhead"><h2 id="copyTitle">Your stream schedule</h2><button type="button" class="iconbtn" data-close aria-label="Close">×</button></div>
+  <div class="fgrid"><p class="full" style="margin:0;color:var(--muted);font-size:14px">Select all and copy it into Discord, X or your channel panel.</p><textarea id="copyText" class="full" readonly></textarea></div>
+  <div class="dfoot"><span class="spacer"></span><button type="button" class="btn primary" data-close>Done</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const DAYS_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const TYPES = { stream: "Stream", study: "Study", break: "Break", other: "Other" };
+  const TAG_LABEL = { stream: "Game or platform", study: "Subject or course", break: "Label", other: "Label" };
+  const TAG_PH = { stream: "e.g. Valorant · Twitch", study: "e.g. MATH 201", break: "e.g. Gym", other: "e.g. Edit clips for YouTube" };
+  const HOUR = 52, PPM = HOUR / 60;
+  const PUBLISH_DELAY = 15000;
+  const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const pref = {
+    get(k, d) { try { const v = localStorage.getItem("ssp:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("ssp:" + k, JSON.stringify(v)); } catch {} },
+  };
+
+  // mode: "edit" = opened through Start planner on the PC (can save + publish)
+  //       "view" = the published phone link (read-only)
+  //       "file" = index.html double-clicked directly (nothing can load)
+  let blocks = [], loaded = false, loadError = "", mode = "pending", readOnly = true;
+  let server = { git: false, unpublished: false };
+  let pub = { state: "idle", msg: "", timer: 0 };
+  let updatedAt = "";
+  let view = pref.get("view", matchMedia("(max-width: 720px)").matches ? "agenda" : "week");
+  let h24 = pref.get("h24", false);
+  let gridStartHour = 8;
+  let editing = null;
+  let examplesArmed = false;
+
+  // ---------- time helpers ----------
+  function nowInfo() { const d = new Date(); return { d, day: (d.getDay() + 6) % 7, min: d.getHours() * 60 + d.getMinutes() }; }
+  function weekKey(date = new Date()) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const n = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - n);
+    const y = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return d.getUTCFullYear() + "-W" + pad(Math.ceil(((d - y) / 86400000 + 1) / 7));
+  }
+  function fmt(m) {
+    if (h24) return pad(Math.floor(m / 60)) + ":" + pad(m % 60);
+    const t = m % 1440; let h = Math.floor(t / 60); const mm = t % 60; const ap = h < 12 ? "AM" : "PM";
+    h = h % 12 || 12; return h + (mm ? ":" + pad(mm) : "") + " " + ap;
+  }
+  const fmtRange = (b) => fmt(b.start) + " – " + fmt(b.end);
+  function fmtHour(h) { return h24 ? pad(h) + ":00" : ((h % 12) || 12) + (h % 24 < 12 ? " AM" : " PM"); }
+  function toInput(m) { const t = m >= 1440 ? 0 : m; return pad(Math.floor(t / 60)) + ":" + pad(t % 60); }
+  function fromInput(s, isEnd) {
+    if (!/^\d{2}:\d{2}$/.test(s || "")) return NaN;
+    const [h, mm] = s.split(":").map(Number); let v = h * 60 + mm;
+    if (isEnd && v === 0) v = 1440; return v;
+  }
+  function dur(m) {
+    m = Math.max(0, Math.round(m));
+    if (m < 60) return m + "m";
+    if (m < 1440) { const h = Math.floor(m / 60), r = m % 60; return h + "h" + (r ? " " + pad(r) + "m" : ""); }
+    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60); return d + "d" + (h ? " " + h + "h" : "");
+  }
+  const hrs = (m) => { const v = Math.round(m / 6) / 10; return (Number.isInteger(v) ? v : v.toFixed(1)) + "h"; };
+  function weekLabel() {
+    const { d } = nowInfo(); const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const f = (x) => x.getDate() + " " + x.toLocaleString(undefined, { month: "short" });
+    return "Week " + weekKey().split("-W")[1] + " · " + f(mon) + " – " + f(sun);
+  }
+  function ago(iso) {
+    const t = Date.parse(iso); if (!isFinite(t)) return "";
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "just now"; if (m < 60) return m + " min ago";
+    if (m < 1440) return Math.round(m / 60) + " h ago";
+    return new Date(t).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  }
+  const isDone = (b) => b.doneWeek === weekKey();
+  const tzName = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } };
+
+  // ---------- data: schedule.json uses readable times ("19:30", "24:00") and day names ("Mon") ----------
+  function parseTime(s) { const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? "")); if (!m) return NaN; const v = +m[1] * 60 + +m[2]; return v <= 1440 ? v : NaN; }
+  const toTime = (m) => pad(Math.floor(m / 60)) + ":" + pad(m % 60);
+  function clean(id, r) {
+    r = r || {};
+    let day = typeof r.day === "number" ? r.day : DAYS.findIndex((d) => d.toLowerCase() === String(r.day || "").slice(0, 3).toLowerCase());
+    day = Math.min(6, Math.max(0, Math.round(day) || 0));
+    let start = typeof r.start === "number" ? r.start : parseTime(r.start);
+    let end = typeof r.end === "number" ? r.end : parseTime(r.end);
+    if (!isFinite(start)) start = 0;
+    if (!isFinite(end)) end = start + 60;
+    start = Math.min(1435, Math.max(0, Math.round(start)));
+    end = Math.min(1440, Math.max(start + 5, Math.round(end)));
+    return {
+      id: String(id).slice(0, 60), day, start, end,
+      title: String(r.title || "Untitled").slice(0, 80),
+      type: typeof r.type === "string" && has(TYPES, r.type) ? r.type : "other",
+      tag: String(r.tag || "").slice(0, 60),
+      notes: String(r.notes || "").slice(0, 500),
+      doneWeek: typeof r.doneWeek === "string" ? r.doneWeek : "",
+      example: r.example === true,
+    };
+  }
+  function toFile(b) {
+    const o = { id: b.id, day: DAYS[b.day], start: toTime(b.start), end: toTime(b.end), type: b.type, title: b.title, tag: b.tag, notes: b.notes, doneWeek: b.doneWeek };
+    if (b.example) o.example = true;
+    return o;
+  }
+  const uid = () => "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  async function loadSchedule() {
+    const r = await fetch("schedule.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    const list = Array.isArray(j && j.blocks) ? j.blocks : [];
+    blocks = list.slice(0, 500).map((b, i) => clean(b && b.id ? b.id : "b" + i, b));
+    updatedAt = typeof j.updated === "string" ? j.updated : "";
+    loaded = true; loadError = "";
+  }
+
+  // Every change saves the whole schedule to schedule.json through the local helper, one save at a time.
+  let saveChain = Promise.resolve();
+  function commit(mutate, okMsg) {
+    if (readOnly) { toast(mode === "view" ? "This is the view-only phone copy. Edit on your PC." : "Editing isn't available here."); return; }
+    const before = blocks;
+    mutate();
+    render();
+    saveChain = saveChain.then(async () => {
+      const r = await fetch("api/schedule", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: tzName(), blocks: blocks.map(toFile) }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || "HTTP " + r.status);
+      updatedAt = j.updated || updatedAt;
+      server.unpublished = true;
+      if (okMsg) toast(okMsg);
+      queuePublish();
+      render();
+    }).catch((e) => {
+      blocks = before; render();
+      toast("Couldn't save. Make sure the Start planner window is still open.");
+      console.error(e);
+    });
+  }
+
+  function queuePublish() {
+    if (!server.git) return;
+    clearTimeout(pub.timer);
+    pub.state = "waiting";
+    pub.timer = setTimeout(publishNow, PUBLISH_DELAY);
+  }
+  async function publishNow() {
+    clearTimeout(pub.timer);
+    if (!server.git || pub.state === "publishing") return;
+    pub.state = "publishing"; renderBanners();
+    try {
+      await saveChain;
+      const r = await fetch("api/publish", { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) { pub.state = "idle"; pub.msg = ""; server.unpublished = false; toast("Published. Your phone shows it within a few minutes."); }
+      else { pub.state = "error"; pub.msg = j.error || "HTTP " + r.status; }
+    } catch { pub.state = "error"; pub.msg = "The Start planner window isn't responding."; }
+    renderBanners();
+  }
+
+  // ---------- derived ----------
+  function liveInfo() {
+    const { day, min } = nowInfo();
+    const cur = blocks.filter((b) => b.day === day && b.start <= min && b.end > min).sort((a, b) => a.start - b.start)[0] || null;
+    let next = null, inMin = Infinity;
+    for (const b of blocks) {
+      if (cur && b.id === cur.id) continue;
+      let d = (b.day - day) * 1440 + b.start - min;
+      if (d <= 0) d += 7 * 1440;
+      if (d < inMin) { inMin = d; next = b; }
+    }
+    return { cur, next, inMin, day, min };
+  }
+  function dayWord(d, today) { if (d === today) return "Today"; if (d === (today + 1) % 7) return "Tomorrow"; return DAYS_LONG[d]; }
+
+  // ---------- render ----------
+  function render() {
+    const suffix = mode === "view" ? " · view-only" : mode === "edit" ? " · editing on this PC" : "";
+    $("#weekline").textContent = weekLabel() + suffix;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+    $("#c12").setAttribute("aria-pressed", String(!h24));
+    $("#c24").setAttribute("aria-pressed", String(h24));
+    $("#addBtn").hidden = readOnly;
+    renderBanners(); renderStatus();
+    if (view === "week") renderGrid(); else renderAgenda();
+  }
+
+  function renderBanners() {
+    let html = "";
+    if (mode === "file") {
+      html += `<div class="banner"><p>This page can't load your schedule when opened directly. Double-click <b>Start planner.bat</b> in this folder to edit, or open your phone link to view.</p></div>`;
+    } else if (loadError) {
+      html += `<div class="banner"><p>Couldn't read <code>schedule.json</code> (${esc(loadError)}). If you edited it by hand, check the commas and quotes, or ask Claude to fix it.</p></div>`;
+    } else if (mode === "view") {
+      html += `<div class="banner quiet"><p>View-only copy${updatedAt ? " · updated " + esc(ago(updatedAt)) : ""}. Edit on your PC with <b>Start planner</b>, or ask Claude to change it.</p><button type="button" class="btn sm" id="refreshBtn">Refresh</button></div>`;
+    } else if (mode === "edit") {
+      if (!server.git) {
+        html += `<div class="banner"><p>Changes save to <code>schedule.json</code> on this PC. Publishing to your phone isn't set up yet. See <b>README.md</b>.</p></div>`;
+      } else if (pub.state === "publishing") {
+        html += `<div class="banner quiet"><p>Publishing to your phone…</p></div>`;
+      } else if (pub.state === "error") {
+        html += `<div class="banner"><p>Saved on this PC, but publishing to your phone failed: ${esc(pub.msg)}. Check you're online, then try again.</p><button type="button" class="btn sm" id="publishBtn">Try again</button></div>`;
+      } else if (server.unpublished) {
+        html += `<div class="banner quiet"><p>Saved on this PC. ${pub.state === "waiting" ? "Publishing to your phone in a few seconds." : "Not on your phone yet."}</p><button type="button" class="btn sm" id="publishBtn">Publish now</button></div>`;
+      } else if (loaded) {
+        html += `<div class="banner ok"><p>Saved and published. Your phone link has the latest schedule.</p></div>`;
+      }
+    }
+    const ex = blocks.filter((b) => b.example).length;
+    if (ex && !readOnly) html += `<div class="banner"><p><b>${ex} example blocks</b> are filled in to show how it works (dashed outline). Edit one to make it yours, or clear them all and start fresh.</p><button type="button" class="btn sm ${examplesArmed ? "danger armed" : ""}" id="clearEx">${examplesArmed ? "Remove " + ex + " examples?" : "Clear examples"}</button></div>`;
+    $("#banners").innerHTML = html;
+  }
+
+  function renderStatus() {
+    if (!loaded) { $("#status").innerHTML = `<div class="panel"><div class="eyebrow">Right now</div><p class="sub">Loading your week…</p></div>`; return; }
+    const { cur, next, inMin, day, min } = liveInfo();
+    let nowHtml;
+    if (cur) {
+      const pct = Math.min(100, Math.max(0, ((min - cur.start) / (cur.end - cur.start)) * 100));
+      const label = cur.type === "stream" ? `<span class="onair"><i></i>On air</span>` : `<span class="chip" data-type="${cur.type}">${TYPES[cur.type]}</span>`;
+      nowHtml = `<div class="panel now ${cur.type === "stream" ? "is-live" : ""}" data-type="${cur.type}">
+        <div class="eyebrow">Right now ${label}</div>
+        <h2>${esc(cur.title)}</h2>
+        <p class="sub">${cur.tag ? esc(cur.tag) + " · " : ""}${fmtRange(cur)}</p>
+        <div class="prog"><i style="width:${pct.toFixed(1)}%"></i></div>
+        <div class="row"><span class="mono">${dur(cur.end - min)} left</span>
+        ${readOnly ? (isDone(cur) ? `<span class="mono" style="color:var(--ok)">✓ Done</span>` : "") : `<button type="button" class="btn sm" data-toggle-done="${esc(cur.id)}">${isDone(cur) ? "✓ Done" : "Mark done"}</button>`}</div></div>`;
+    } else {
+      nowHtml = `<div class="panel now"><div class="eyebrow">Right now</div><h2>Free time</h2>
+        <p class="sub">${blocks.length ? "Nothing scheduled at the moment." : "Add your streams and study sessions to see what's on."}</p></div>`;
+    }
+    let nextHtml;
+    if (next) {
+      const nd = (day + Math.floor((min + inMin) / 1440)) % 7;
+      nextHtml = `<div class="panel" data-type="${next.type}"><div class="eyebrow">Up next <span class="chip" data-type="${next.type}">${TYPES[next.type]}</span></div>
+        <div class="countdown"><small>${next.type === "stream" ? "Go live in" : "Starts in"}</small> ${dur(inMin)}</div>
+        <h2 style="font-size:18px">${esc(next.title)}</h2>
+        <p class="sub">${dayWord(nd, day)} · ${fmtRange(next)}${next.tag ? " · " + esc(next.tag) : ""}</p></div>`;
+    } else {
+      nextHtml = `<div class="panel"><div class="eyebrow">Up next</div><h2 style="font-size:18px">Nothing yet</h2><p class="sub">Your next block will count down here.</p></div>`;
+    }
+    const tot = { stream: 0, study: 0, break: 0, other: 0 }; let all = 0, doneMin = 0, sessions = 0, doneSessions = 0;
+    for (const b of blocks) {
+      const m = b.end - b.start; tot[b.type] += m; all += m;
+      if (b.type === "stream" || b.type === "study") { sessions++; if (isDone(b)) doneSessions++; }
+      if (isDone(b)) doneMin += m;
+    }
+    const seg = Object.keys(TYPES).filter((t) => tot[t]).map((t) => `<i data-type="${t}" style="width:${(tot[t] / all * 100).toFixed(2)}%" title="${TYPES[t]} ${hrs(tot[t])}"></i>`).join("");
+    const legend = Object.keys(TYPES).filter((t) => tot[t]).map((t) => `<span data-type="${t}">${TYPES[t]} ${hrs(tot[t])}</span>`).join("");
+    const statsHtml = `<div class="panel stats"><div class="eyebrow">This week</div>
+      <div class="figs">
+        <div class="fig" data-type="stream"><b>${hrs(tot.stream)}</b><span>streaming</span></div>
+        <div class="fig" data-type="study"><b>${hrs(tot.study)}</b><span>studying</span></div>
+        <div class="fig"><b style="color:var(--ok)">${doneSessions}/${sessions}</b><span>sessions done</span></div>
+      </div>
+      <div class="stack" aria-hidden="true">${seg}</div>
+      <div class="legend">${legend || "<span>No time planned yet</span>"}${doneMin ? `<span style="--c:var(--ok)">Completed ${hrs(doneMin)}</span>` : ""}</div></div>`;
+    $("#status").innerHTML = nowHtml + nextHtml + statsHtml;
+  }
+
+  function layoutDay(list) {
+    list = list.slice().sort((a, b) => a.start - b.start || b.end - a.end);
+    const out = []; let cluster = [], clusterEnd = -1;
+    const flush = () => {
+      const laneEnds = []; const placed = [];
+      for (const b of cluster) {
+        let l = laneEnds.findIndex((e) => e <= b.start);
+        if (l < 0) { l = laneEnds.length; laneEnds.push(0); }
+        laneEnds[l] = b.end; placed.push({ b, lane: l });
+      }
+      placed.forEach((p) => { p.lanes = laneEnds.length; out.push(p); });
+      cluster = []; clusterEnd = -1;
+    };
+    for (const b of list) {
+      if (cluster.length && b.start >= clusterEnd) flush();
+      cluster.push(b); clusterEnd = Math.max(clusterEnd, b.end);
+    }
+    if (cluster.length) flush();
+    return out;
+  }
+
+  function renderGrid() {
+    const { day: today, min } = nowInfo();
+    const { cur } = liveInfo();
+    let sh = 8, eh = 24;
+    for (const b of blocks) { sh = Math.min(sh, Math.floor(b.start / 60)); eh = Math.max(eh, Math.ceil(b.end / 60)); }
+    eh = Math.min(24, eh); gridStartHour = sh;
+    const hours = eh - sh, height = hours * HOUR;
+    let html = `<div class="grid-scroll"><div class="grid"><div class="ghead"></div>`;
+    DAYS.forEach((d, i) => {
+      const m = blocks.filter((b) => b.day === i).reduce((s, b) => s + b.end - b.start, 0);
+      html += `<div class="ghead ${i === today ? "is-today" : ""}"><span class="gday">${d}</span><span class="gsum">${m ? hrs(m) : ""}</span></div>`;
+    });
+    html += `<div class="gutter" style="height:${height}px">`;
+    for (let h = sh; h < eh; h++) html += `<span style="top:${(h - sh) * HOUR}px">${fmtHour(h)}</span>`;
+    html += `</div>`;
+    DAYS.forEach((d, i) => {
+      html += `<div class="gcol ${i === today ? "is-today" : ""} ${readOnly ? "ro" : ""}" data-day="${i}" style="height:${height}px" aria-label="${DAYS_LONG[i]}">`;
+      for (const { b, lane, lanes } of layoutDay(blocks.filter((x) => x.day === i))) {
+        const top = (b.start - sh * 60) * PPM + 1;
+        const h = Math.max(20, (b.end - b.start) * PPM - 3);
+        const short = h < 40;
+        const cls = ["blk", short ? "short" : "", isDone(b) ? "done" : "", b.example ? "example" : "", cur && cur.id === b.id ? "live" : ""].join(" ");
+        html += `<div class="${cls}" role="button" tabindex="0" data-id="${esc(b.id)}" data-type="${b.type}"
+          style="top:${top}px;height:${h}px;left:calc(${(lane / lanes) * 100}% + 3px);width:calc(${100 / lanes}% - 6px)"
+          title="${esc(b.title)} · ${fmtRange(b)}${b.tag ? " · " + esc(b.tag) : ""}">
+          ${short ? `<span class="bm">${fmt(b.start)}</span><span class="bt">${esc(b.title)}</span>`
+                  : `<span class="bm">${fmtRange(b)}</span><span class="bt">${esc(b.title)}</span>${b.tag && h > 62 ? `<span class="bg">${esc(b.tag)}</span>` : ""}`}
+        </div>`;
+      }
+      if (i === today && min >= sh * 60 && min <= eh * 60) html += `<div class="nowline" style="top:${(min - sh * 60) * PPM}px"></div>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+    if (!loaded) html += `<div class="overlay"><div class="card"><h3>Loading your week…</h3></div></div>`;
+    else if (!blocks.length && !loadError && mode !== "file") html += `<div class="overlay"><div class="card"><h3>Your week is empty</h3><p>${readOnly ? "Nothing has been scheduled yet." : "Click any time slot to drop in a stream or study block, or use Add block."}</p>${readOnly ? "" : `<button type="button" class="btn primary" data-add>+ Add block</button>`}</div></div>`;
+    $("#board").innerHTML = html;
+  }
+
+  function renderAgenda() {
+    const { day: today } = nowInfo();
+    const { cur } = liveInfo();
+    if (!loaded) { $("#board").innerHTML = `<div class="aday"><p class="aempty">Loading your week…</p></div>`; return; }
+    let html = `<div class="agenda">`;
+    for (let k = 0; k < 7; k++) {
+      const i = (today + k) % 7; // the list starts at today
+      const list = blocks.filter((b) => b.day === i).sort((a, b) => a.start - b.start);
+      const m = list.reduce((s, b) => s + b.end - b.start, 0);
+      html += `<section class="aday ${i === today ? "is-today" : ""}"><header><h3>${i === today ? "Today · " + DAYS[i] : DAYS_LONG[i]}</h3><span class="mono">${m ? hrs(m) + " planned" : ""}</span>${readOnly ? "" : `<button type="button" class="linkbtn" data-add-day="${i}">+ Add</button>`}</header>`;
+      if (!list.length) html += `<p class="aempty">Nothing planned.</p>`;
+      else {
+        html += `<ul>`;
+        for (const b of list) {
+          const live = cur && cur.id === b.id;
+          html += `<li class="arow ${isDone(b) ? "done" : ""} ${b.example ? "example" : ""} ${live ? "live" : ""}" data-id="${esc(b.id)}" data-type="${b.type}" tabindex="0">
+            <span class="atime">${fmtRange(b)} · ${live && b.type === "stream" ? `<span class="onair" style="display:inline-flex"><i></i>On air</span>` : TYPES[b.type].toUpperCase()}</span>
+            <span class="atitle">${esc(b.title)}${b.tag ? ` <small>· ${esc(b.tag)}</small>` : ""}</span>
+            ${readOnly ? "" : `<label class="adone"><input type="checkbox" id="done-${esc(b.id)}" data-done-box="${esc(b.id)}" ${isDone(b) ? "checked" : ""} aria-label="Done this week">Done</label>`}
+          </li>`;
+        }
+        html += `</ul>`;
+      }
+      html += `</section>`;
+    }
+    html += `</div>`;
+    $("#board").innerHTML = html;
+  }
+
+  // ---------- dialogs ----------
+  const dlg = $("#dlg");
+  const openDlg = (d) => { try { d.showModal(); } catch { d.setAttribute("open", ""); } };
+  const closeDlg = (d) => { try { d.close(); } catch { d.removeAttribute("open"); } };
+
+  $("#fDays").innerHTML = DAYS.map((d, i) => `<label><input type="checkbox" id="fDay${i}" value="${i}"><span>${d}</span></label>`).join("");
+  $("#fDay").innerHTML = DAYS_LONG.map((d, i) => `<option value="${i}">${d}</option>`).join("");
+
+  function setType(t) {
+    document.querySelectorAll('input[name="fType"]').forEach((r) => (r.checked = r.value === t));
+    $("#fTagLabel").textContent = TAG_LABEL[t];
+    $("#fTag").placeholder = TAG_PH[t];
+    $("#fDays").setAttribute("data-type", t);
+  }
+  const curType = () => (document.querySelector('input[name="fType"]:checked') || {}).value || "stream";
+
+  function openNew(pre = {}) {
+    if (readOnly) return;
+    editing = null;
+    $("#dlgTitle").textContent = "Add block";
+    $("#fTitle").value = "";
+    setType(pre.type || "stream");
+    const start = pre.start ?? 19 * 60, end = Math.min(1440, pre.end ?? start + 120);
+    $("#fStart").value = toInput(start); $("#fEnd").value = toInput(end);
+    DAYS.forEach((_, i) => ($("#fDay" + i).checked = i === (pre.day ?? nowInfo().day)));
+    $("#fTag").value = ""; $("#fNotes").value = ""; $("#fDone").checked = false;
+    $("#fDaysWrap").hidden = false; $("#fDayWrap").hidden = true; $("#fDoneWrap").hidden = true; $("#fDelete").hidden = true;
+    $("#fSave").textContent = "Add";
+    resetDelete(); $("#fErr").hidden = true; checkConflicts();
+    openDlg(dlg); $("#fTitle").focus();
+  }
+  function openEdit(id) {
+    const b = blocks.find((x) => x.id === id); if (!b) return;
+    if (readOnly) return openView(b);
+    editing = b;
+    $("#dlgTitle").textContent = "Edit block";
+    $("#fTitle").value = b.title; setType(b.type);
+    $("#fDay").value = String(b.day);
+    $("#fStart").value = toInput(b.start); $("#fEnd").value = toInput(b.end);
+    $("#fTag").value = b.tag; $("#fNotes").value = b.notes; $("#fDone").checked = isDone(b);
+    $("#fDaysWrap").hidden = true; $("#fDayWrap").hidden = false; $("#fDoneWrap").hidden = false;
+    $("#fDelete").hidden = false; $("#fSave").textContent = "Save";
+    resetDelete(); $("#fErr").hidden = true; checkConflicts();
+    openDlg(dlg);
+  }
+  function openView(b) {
+    $("#viewTitle").textContent = b.title;
+    $("#viewBody").innerHTML = `<p class="full" data-type="${b.type}" style="margin:0"><span class="chip">${TYPES[b.type]}</span> <span class="mono">${DAYS_LONG[b.day]} · ${fmtRange(b)}</span></p>
+      ${b.tag ? `<p class="full" style="margin:0;color:var(--muted)">${esc(b.tag)}</p>` : ""}
+      ${b.notes ? `<p class="full notes-view">${esc(b.notes)}</p>` : ""}
+      ${isDone(b) ? `<p class="full" style="margin:0;color:var(--ok)">✓ Done this week</p>` : ""}`;
+    openDlg($("#viewDlg"));
+  }
+  function selectedDays() { return editing ? [+$("#fDay").value] : DAYS.map((_, i) => i).filter((i) => $("#fDay" + i).checked); }
+  function checkConflicts() {
+    const s = fromInput($("#fStart").value), e = fromInput($("#fEnd").value, true);
+    const w = $("#fWarn");
+    if (!(s < e)) { w.hidden = true; return; }
+    const days = selectedDays();
+    const hits = blocks.filter((b) => (!editing || b.id !== editing.id) && days.includes(b.day) && b.start < e && b.end > s);
+    if (hits.length) {
+      w.hidden = false;
+      w.textContent = "Overlaps with " + hits.slice(0, 3).map((b) => `${b.title} (${DAYS[b.day]} ${fmtRange(b)})`).join(", ") + (hits.length > 3 ? ` and ${hits.length - 3} more` : "") + ". You can still save it.";
+    } else w.hidden = true;
+  }
+  let delTimer = 0;
+  function resetDelete() { clearTimeout(delTimer); const d = $("#fDelete"); d.classList.remove("armed"); d.textContent = "Delete"; }
+
+  $("#fType").addEventListener("change", () => setType(curType()));
+  ["#fStart", "#fEnd", "#fDay"].forEach((s) => $(s).addEventListener("input", checkConflicts));
+  $("#fDays").addEventListener("change", checkConflicts);
+  document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) closeDlg(d); }));
+  document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeDlg(b.closest("dialog"))));
+
+  $("#fDelete").addEventListener("click", () => {
+    const d = $("#fDelete");
+    if (!editing) return;
+    if (!d.classList.contains("armed")) {
+      d.classList.add("armed"); d.textContent = "Click again to delete";
+      delTimer = setTimeout(resetDelete, 3500); return;
+    }
+    const id = editing.id, title = editing.title;
+    closeDlg(dlg);
+    commit(() => { blocks = blocks.filter((b) => b.id !== id); }, `Deleted “${title}”`);
+  });
+
+  $("#form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = $("#fErr");
+    const title = $("#fTitle").value.trim();
+    const start = fromInput($("#fStart").value), end = fromInput($("#fEnd").value, true);
+    const days = selectedDays();
+    let msg = "";
+    if (!title) msg = "Give the block a title.";
+    else if (!isFinite(start) || !isFinite(end)) msg = "Set a start and end time.";
+    else if (end <= start) msg = "The end time has to be after the start time. For a late stream, end at 12:00 AM.";
+    else if (!days.length) msg = "Pick at least one day.";
+    if (msg) { err.textContent = msg; err.hidden = false; return; }
+    const base = { title, type: curType(), start, end, tag: $("#fTag").value.trim(), notes: $("#fNotes").value.trim(), example: false };
+    closeDlg(dlg);
+    if (editing) {
+      const id = editing.id;
+      const next = clean(id, { ...base, day: days[0], doneWeek: $("#fDone").checked ? weekKey() : "" });
+      commit(() => { blocks = blocks.map((b) => b.id === id ? next : b); }, "Saved");
+    } else {
+      const added = days.map((d) => clean(uid() + d, { ...base, day: d, doneWeek: "" }));
+      commit(() => { blocks = blocks.concat(added); }, days.length > 1 ? `Added to ${days.length} days` : "Added");
+    }
+  });
+
+  // ---------- page interactions ----------
+  $("#addBtn").addEventListener("click", () => openNew());
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { view = b.dataset.view; pref.set("view", view); render(); }));
+  document.querySelectorAll("[data-clock]").forEach((b) => b.addEventListener("click", () => { h24 = b.dataset.clock === "24"; pref.set("h24", h24); render(); }));
+
+  function toggleDone(id, on) {
+    const b = blocks.find((x) => x.id === id); if (!b) return;
+    const v = on === undefined ? !isDone(b) : on;
+    commit(() => { blocks = blocks.map((x) => x.id === id ? { ...x, doneWeek: v ? weekKey() : "" } : x); }, v ? `“${b.title}” done for this week` : null);
+  }
+
+  async function refresh() { try { await loadSchedule(); render(); toast("Up to date"); } catch (e) { loadError = e.message; render(); } }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest("dialog")) return;
+    const tg = t.closest("[data-toggle-done]"); if (tg) { toggleDone(tg.dataset.toggleDone); return; }
+    if (t.closest(".adone")) return; // the checkbox handles itself
+    if (t.closest("[data-add]")) { openNew(); return; }
+    if (t.id === "publishBtn") { publishNow(); return; }
+    if (t.id === "refreshBtn") { refresh(); return; }
+    const ad = t.closest("[data-add-day]"); if (ad) { openNew({ day: +ad.dataset.addDay }); return; }
+    if (t.id === "clearEx") {
+      if (!examplesArmed) { examplesArmed = true; renderBanners(); setTimeout(() => { examplesArmed = false; renderBanners(); }, 4000); return; }
+      examplesArmed = false;
+      commit(() => { blocks = blocks.filter((b) => !b.example); }, "Examples cleared. Your week is a blank slate.");
+      return;
+    }
+    const blk = t.closest("[data-id]"); if (blk) { openEdit(blk.dataset.id); return; }
+    const gcol = t.closest(".gcol");
+    if (gcol && !readOnly) {
+      const y = e.clientY - gcol.getBoundingClientRect().top;
+      const start = Math.max(0, Math.min(1410, gridStartHour * 60 + Math.floor(y / PPM / 30) * 30));
+      openNew({ day: +gcol.dataset.day, start, end: Math.min(1440, start + 60) });
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-id]")) { e.preventDefault(); openEdit(e.target.dataset.id); }
+  });
+  document.addEventListener("change", (e) => { const id = e.target.dataset && e.target.dataset.doneBox; if (id) toggleDone(id, e.target.checked); });
+
+  // Copy stream schedule (for Discord, socials, channel panels)
+  function scheduleText() {
+    const streams = blocks.filter((b) => b.type === "stream");
+    if (!streams.length) return null;
+    const tz = tzName();
+    const lines = [`Stream schedule · ${weekLabel()}${tz ? ` · times in ${tz}` : ""}`, ""];
+    DAYS.forEach((d, i) => {
+      const list = streams.filter((b) => b.day === i).sort((a, b) => a.start - b.start);
+      if (!list.length) lines.push(`${d.toUpperCase()}  Off`);
+      else list.forEach((b, k) => lines.push(`${k ? "     " : d.toUpperCase() + "  "}${fmtRange(b)}  ${b.title}${b.tag ? ` (${b.tag})` : ""}`));
+    });
+    return lines.join("\n");
+  }
+  $("#copyBtn").addEventListener("click", () => {
+    const text = scheduleText();
+    if (!text) { toast("Add a stream block first, then copy your schedule."); return; }
+    const fallback = () => { const ta = $("#copyText"); ta.value = text; openDlg($("#copyDlg")); ta.focus(); ta.select(); };
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) return fallback();
+      navigator.clipboard.writeText(text).then(() => toast("Stream schedule copied. Paste it anywhere."), fallback);
+    } catch { fallback(); }
+  });
+
+  let toastTimer = 0;
+  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600); }
+
+  // ---------- boot ----------
+  async function boot() {
+    render();
+    if (location.protocol === "file:") { mode = "file"; loaded = true; render(); return; }
+    try {
+      const r = await fetch("api/status", { cache: "no-store" });
+      const j = r.ok ? await r.json() : null;
+      if (j && j.editable) { mode = "edit"; readOnly = false; server.git = !!j.git; server.unpublished = !!j.unpublished; }
+    } catch {}
+    if (mode !== "edit") mode = "view";
+    try { await loadSchedule(); } catch (e) { loaded = true; loadError = e.message; }
+    render();
+    setInterval(() => { if (!document.querySelector("dialog[open]")) render(); else renderStatus(); }, 30000);
+    if (mode === "view") {
+      setInterval(() => { loadSchedule().then(render).catch(() => {}); }, 5 * 60000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) loadSchedule().then(render).catch(() => {}); });
+    }
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
